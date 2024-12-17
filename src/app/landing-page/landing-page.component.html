@@ -1,0 +1,224 @@
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <nav class="container mx-auto px-4 py-6">
+      <div class="flex items-center justify-between">
+        <div class="text-3xl font-bold">
+          <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            examly
+          </span>
+        </div>
+        <button 
+        (click)="toggleLoginModal()"
+        class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+          Sign In
+        </button>
+      </div>
+    </nav>
+  
+    <div class="container mx-auto px-4 py-16">
+      <div class="text-center">
+        <h1 class="text-4xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600">
+          Exam Scheduling Made Simple
+        </h1>
+        <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          Generate conflict-free exam schedules automatically using your existing student and course data
+        </p>
+        <button
+        (click)="toggleSignupModal()" 
+        class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:opacity-90 transition-opacity">
+          Get Started
+        </button>
+      </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-16">
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+          <div class="bg-gradient-to-br from-blue-600 to-purple-600 text-transparent bg-clip-text mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Easy Data Import</h3>
+          <p class="text-gray-600">Simply upload your student and course data spreadsheets to get started</p>
+        </div>
+  
+        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+          <div class="bg-gradient-to-br from-blue-600 to-purple-600 text-transparent bg-clip-text mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Conflict Resolution</h3>
+          <p class="text-gray-600">Automatically detect and resolve scheduling conflicts between courses</p>
+        </div>
+  
+        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+          <div class="bg-gradient-to-br from-blue-600 to-purple-600 text-transparent bg-clip-text mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Export Schedule</h3>
+          <p class="text-gray-600">Download your generated schedule in multiple formats</p>
+        </div>
+      </div>
+    </div>
+  
+<div class="container mx-auto px-4 py-16">
+    <h2 class="text-3xl font-bold text-center mb-12 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+      How examly Works
+    </h2>
+    <div class="max-w-4xl mx-auto space-y-20">
+      <div class="flex flex-col md:flex-row items-center">
+        <div class="md:w-1/2 mb-6 md:mb-0">
+          <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-full w-16 h-16 flex items-center justify-center mb-4">
+            <span class="text-2xl font-bold text-white">1</span>
+          </div>
+          <h3 class="text-2xl font-semibold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Upload Your Data
+          </h3>
+          <ul class="text-gray-600 space-y-2">
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Import student enrollment data via Excel/CSV
+            </li>
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Upload course information and requirements
+            </li>
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Automatic data validation and error checking
+            </li>
+          </ul>
+        </div>
+        <div class="md:w-1/2 md:pl-8">
+          <div class="bg-white p-4 rounded-xl shadow-lg">
+            <svg class="w-full h-48 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Step 2 -->
+      <div class="flex flex-col md:flex-row items-center">
+        <div class="md:w-1/2 mb-6 md:mb-0 md:order-2">
+          <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-full w-16 h-16 flex items-center justify-center mb-4">
+            <span class="text-2xl font-bold text-white">2</span>
+          </div>
+          <h3 class="text-2xl font-semibold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Configure Settings
+          </h3>
+          <ul class="text-gray-600 space-y-2">
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Set exam duration and time slots
+            </li>
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Define room capacities and constraints
+            </li>
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Customize scheduling preferences
+            </li>
+          </ul>
+        </div>
+        <div class="md:w-1/2 md:pr-8 md:order-1">
+          <div class="bg-white p-4 rounded-xl shadow-lg">
+            <svg class="w-full h-48 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+  
+      <div class="flex flex-col md:flex-row items-center">
+        <div class="md:w-1/2 mb-6 md:mb-0">
+          <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-full w-16 h-16 flex items-center justify-center mb-4">
+            <span class="text-2xl font-bold text-white">3</span>
+          </div>
+          <h3 class="text-2xl font-semibold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Generate & Export Schedule
+          </h3>
+          <ul class="text-gray-600 space-y-2">
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              AI-powered conflict resolution
+            </li>
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Real-time schedule optimization
+            </li>
+            <li class="flex items-center">
+              <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Export to PDF, Excel, or Google Calendar
+            </li>
+          </ul>
+        </div>
+        <div class="md:w-1/2 md:pl-8">
+          <div class="bg-white p-4 rounded-xl shadow-lg">
+            <svg class="w-full h-48 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+      <div class="container mx-auto px-4 text-center">
+        <h2 class="text-3xl font-bold mb-4">Ready to simplify your exam scheduling?</h2>
+        <p class="text-xl mb-8">Try examly today and save hours of manual scheduling work.</p>
+        <button class="bg-white text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors">
+          Start Free Trial
+        </button>
+      </div>
+    </div>
+  </div> 
+
+ <!-- Login Modal -->
+<div 
+*ngIf="showLoginModal"
+class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+(click)="toggleLoginModal()">
+
+<!-- Modal content -->
+<div 
+  class="relative"
+  (click)="$event.stopPropagation()">
+  <app-form-login (closeModal)="toggleLoginModal()"></app-form-login>
+</div>
+</div> 
+
+<!-- Signup Modal -->
+<div 
+  *ngIf="showSignupModal"
+  class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
+  (click)="toggleSignupModal()">
+  <div 
+    class="relative"
+    (click)="$event.stopPropagation()">
+    <app-form-signup (closeModal)="toggleSignupModal()"></app-form-signup>
+  </div>
+</div>
