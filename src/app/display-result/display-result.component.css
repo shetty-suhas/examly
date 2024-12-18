@@ -1,0 +1,29 @@
+.timetable-cell {
+    min-width: 200px;
+  }
+  
+  .exam-slot {
+    transition: all 0.2s;
+  }
+  
+  .exam-slot:hover {
+    transform: scale(1.02);
+  }
+  
+  .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(107, 114, 128, 0.5) transparent;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.5);
+    border-radius: 3px;
+  }

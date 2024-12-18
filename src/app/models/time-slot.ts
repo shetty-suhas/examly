@@ -1,4 +1,6 @@
 interface TimeSlot {
-    time: string;
-    [key: string]: string;
+  day: number;
+  slot: number;
+  startTime: number;
+  endTime: number;
   }

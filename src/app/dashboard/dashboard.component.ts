@@ -1,13 +1,16 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatCalendarCellClassFunction } from '@angular/material/datepicker';
+import { SchedulerService } from '../services/scheduler.service';
+import { ShareDatesService } from '../services/share-dates.service';
+import { FileProcessingStudentsService } from '../services/file-processing-students.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
-export type ImportType = 'students' | 'courses' | 'rooms' | 'faculty';
+export type ImportType = 'students' | 'courses' | 'faculty';
 
 export interface FileStatus {
   students: File | null;
   courses: File | null;
-  rooms: File | null;
   faculty: File | null;
 }
 
@@ -18,13 +21,12 @@ export interface FileStatus {
 })
 export class DashboardComponent {
   isDragging = false;
-  importTypes: ImportType[] = ['students', 'courses', 'rooms', 'faculty'];
+  importTypes: ImportType[] = ['students', 'courses', 'faculty'];
   
 
   uploadedFiles: FileStatus = {
     students: null,
     courses: null,
-    rooms: null,
     faculty: null
   };
 
@@ -34,7 +36,10 @@ export class DashboardComponent {
   maxDate: Date = new Date(new Date().setMonth(new Date().getMonth() + 3));
   selected: Date | null = null;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router,   
+    private shareDates: ShareDatesService,     
+    private fileProcessingStudentsService: FileProcessingStudentsService,
+    private snackBar: MatSnackBar) {}
 
   get allFilesUploaded(): boolean {
     return Object.values(this.uploadedFiles).every(file => file !== null);
@@ -137,15 +142,49 @@ export class DashboardComponent {
     this.uploadedFiles[type] = file;
   }
 
-  onSubmit(type: ImportType) {
-    const file = this.uploadedFiles[type];
-    if (!file) {
-      alert(`Please select a ${type} file first`);
+  async onSubmit(type: ImportType) {
+    if (!this.uploadedFiles[type]) {
+      this.snackBar.open('No file selected', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
       return;
     }
 
-    // Add your file upload logic here
-    console.log(`Uploading ${type} file:`, file);
+    try {
+      switch (type) {
+        case 'students':
+          await this.fileProcessingStudentsService.processStudentFile(this.uploadedFiles[type]!);
+          const summary = this.fileProcessingStudentsService.getDataSummary();
+          this.snackBar.open(
+            `Successfully processed ${summary.totalStudents} students with ${summary.totalCourses} unique courses`,
+            'Close',
+            {
+              duration: 5000,
+              panelClass: ['success-snackbar']
+            }
+          );
+          break;
+
+        case 'courses':
+          // Handle courses file processing
+          break;
+
+        case 'faculty':
+          // Handle faculty file processing
+          break;
+      }
+    } catch (error) {
+      console.error(`Error processing ${type} file:`, error);
+      this.snackBar.open(
+        `Error processing ${type} file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'Close',
+        {
+          duration: 5000,
+          panelClass: ['error-snackbar']
+        }
+      );
+    }
   }
 
   onLogout() {
@@ -163,8 +202,9 @@ export class DashboardComponent {
       return;
     }
 
-    console.log('Selected Dates:', this.selectedDates.map(d => d.toLocaleDateString()));
-    // Add your schedule generation logic here
+    this.shareDates.setSelectedDates(this.selectedDates);
+    this.router.navigate(['/display-result']);
+  
   }
 
   removeFile(type: ImportType) {

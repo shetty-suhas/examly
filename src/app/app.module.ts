@@ -17,6 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { initializeApp } from 'firebase/app';
 import { environment } from '../environments/environment';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 
 initializeApp(environment.firebase);
 
@@ -38,7 +39,8 @@ initializeApp(environment.firebase);
     MatFormFieldModule,
     MatInputModule,
     MatChipsModule,
-    BrowserAnimationsModule
+    BrowserAnimationsModule,
+    MatSnackBarModule
   ],
   providers: [],
   bootstrap: [AppComponent]
