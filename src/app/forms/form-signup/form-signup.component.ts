@@ -1,5 +1,7 @@
 import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { FirebaseService } from 'src/app/services/firebase.service';
 
 @Component({
   selector: 'app-form-signup',
@@ -10,8 +12,14 @@ export class FormSignupComponent implements OnInit {
   @Output() closeModal = new EventEmitter<void>();
   signupForm: FormGroup;
   showPassword = false;
+  isLoading = false;
+  errorMessage = '';
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private firebaseService: FirebaseService
+  ) {
     this.signupForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
@@ -25,10 +33,20 @@ export class FormSignupComponent implements OnInit {
     this.closeModal.emit();
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.signupForm.valid) {
-      console.log(this.signupForm.value);
-      // Handle signup logic here
+      this.isLoading = true;
+      this.errorMessage = '';
+      
+      try {
+        const { email, password, name } = this.signupForm.value;
+        await this.firebaseService.signUp(email, password, name);
+        this.router.navigate(['/dashboard']);
+      } catch (error: any) {
+        this.errorMessage = error.message;
+      } finally {
+        this.isLoading = false;
+      }
     }
   }
 

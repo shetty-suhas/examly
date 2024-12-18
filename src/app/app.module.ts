@@ -15,6 +15,10 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
+import { initializeApp } from 'firebase/app';
+import { environment } from '../environments/environment';
+
+initializeApp(environment.firebase);
 
 @NgModule({
   declarations: [
