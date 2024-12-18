@@ -8,6 +8,13 @@ import { FormLoginComponent } from './forms/form-login/form-login.component';
 import { FormSignupComponent } from './forms/form-signup/form-signup.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DashboardComponent } from './dashboard/dashboard.component';
+import { DisplayResultComponent } from './display-result/display-result.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatChipsModule } from '@angular/material/chips';
 
 @NgModule({
   declarations: [
@@ -15,12 +22,19 @@ import { DashboardComponent } from './dashboard/dashboard.component';
     LandingPageComponent,
     FormLoginComponent,
     FormSignupComponent,
-    DashboardComponent
+    DashboardComponent,
+    DisplayResultComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatChipsModule,
+    BrowserAnimationsModule
   ],
   providers: [],
   bootstrap: [AppComponent]
