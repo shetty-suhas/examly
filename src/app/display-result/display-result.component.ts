@@ -1,6 +1,6 @@
-import { Component, OnInit, Input } from '@angular/core';
-import { ResultService } from '../services/result.service';
-import { ShareDatesService } from '../services/share-dates.service';
+import { OnInit, Component } from "@angular/core";
+import { ResultService } from "../services/result.service";
+import { ShareDatesService } from "../services/share-dates.service";
 
 interface Conflict {
   student: string;
@@ -12,6 +12,24 @@ interface Conflict {
   details: string;
 }
 
+interface FacultyAssignment {
+  faculty: string;
+  timeRange: [number, number];
+}
+
+interface TimetableSlot {
+  courses: string[];
+  facultyAssignments?: {
+    [timeSlot: string]: FacultyAssignment[];
+  };
+}
+
+interface TimetableData {
+  [day: string]: {
+    [timeSlot: string]: TimetableSlot;
+  };
+}
+
 @Component({
   selector: 'app-display-result',
   templateUrl: './display-result.component.html',
@@ -19,13 +37,14 @@ interface Conflict {
 })
 export class DisplayResultComponent implements OnInit {
   selectedDates: Date[] = [];
-  scheduleResult$ = this.resultService.scheduleResult$;
+  examSchedule$ = this.resultService.examSchedule$;
+  facultySchedule$ = this.resultService.facultySchedule$;
   isCalculating$ = this.resultService.isLoading$;
   
   activeTab: 'timetable' | 'conflicts' = 'timetable';
   days: string[] = [];
   conflicts: Conflict[] = [];
-  timetableData: { [key: string]: { [key: string]: string[] } } = {};
+  timetableData: TimetableData = {};
 
   constructor(
     private shareDates: ShareDatesService, 
@@ -41,11 +60,19 @@ export class DisplayResultComponent implements OnInit {
     this.selectedDates = this.shareDates.getSelectedDates();
     this.updateDays();
     
-    this.scheduleResult$.subscribe(result => {
-      if (result) {
-        this.updateTimetableData(result);
+    // Subscribe to both exam and faculty schedules
+    this.examSchedule$.subscribe(examSchedule => {
+      if (examSchedule) {
+        this.updateExamSchedule(examSchedule);
       }
     });
+
+    this.facultySchedule$.subscribe(facultySchedule => {
+      if (facultySchedule) {
+        this.updateFacultySchedule(facultySchedule);
+      }
+    }); 
+    console.log(this.facultySchedule$)
   }
 
   private updateDays() {
@@ -59,38 +86,35 @@ export class DisplayResultComponent implements OnInit {
     );
   }
 
-  updateTimetableData(scheduleResult: any) {
-    this.timetableData = {};
-    this.conflicts = [];
-
-    // Initialize timetable structure for all days
-    this.days.forEach((day, index) => {
+  private updateExamSchedule(examSchedule: any) {
+    // Initialize timetable structure
+    this.days.forEach(day => {
       this.timetableData[day] = {
-        'Morning (9:00 AM - 12:00 PM)': [],
-        'Afternoon (1:00 PM - 4:00 PM)': []
+        'Morning (9:00 AM - 12:00 PM)': { courses: [] },
+        'Afternoon (1:00 PM - 4:00 PM)': { courses: [] }
       };
     });
 
-    // Process schedule results
-    if (scheduleResult?.timetable) {
-      Object.entries(scheduleResult.timetable).forEach(([timeSlot, courses]: [string, any]) => {
+    // Process exam schedule
+    if (examSchedule?.timetable) {
+      Object.entries(examSchedule.timetable).forEach(([timeSlot, courses]: [string, any]) => {
         const [dayPart, slotPart] = timeSlot.split(', ');
         const dayIndex = parseInt(dayPart.replace('Day ', '')) - 1;
         const day = this.days[dayIndex];
         
         if (day) {
-          const timeKey = slotPart.includes('9:00-12:00') 
+          const timeKey = slotPart.includes('Slot 1') 
             ? 'Morning (9:00 AM - 12:00 PM)'
             : 'Afternoon (1:00 PM - 4:00 PM)';
           
-          this.timetableData[day][timeKey] = courses;
+          this.timetableData[day][timeKey].courses = courses;
         }
       });
     }
 
     // Process conflicts
-    if (scheduleResult?.conflictDetails) {
-      this.conflicts = scheduleResult.conflictDetails.map((conflict: any) => ({
+    if (examSchedule?.conflictDetails) {
+      this.conflicts = examSchedule.conflictDetails.map((conflict: any) => ({
         ...conflict,
         severity: 'high',
         type: 'time',
@@ -100,25 +124,37 @@ export class DisplayResultComponent implements OnInit {
     }
   }
 
-  private formatHour(hour: number): string {
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:00 ${period}`;
+  private updateFacultySchedule(facultySchedule: any) {
+    this.days.forEach((day, index) => {
+      const daySchedule = facultySchedule[day];
+      if (daySchedule) {
+        // Update morning assignments
+        if (daySchedule.facultyAssignments?.morning) {
+          this.timetableData[day]['Morning (9:00 AM - 12:00 PM)'].facultyAssignments = {
+            ...daySchedule.facultyAssignments.morning
+          };
+        }
+
+        // Update afternoon assignments
+        if (daySchedule.facultyAssignments?.afternoon) {
+          this.timetableData[day]['Afternoon (1:00 PM - 4:00 PM)'].facultyAssignments = {
+            ...daySchedule.facultyAssignments.afternoon
+          };
+        }
+      }
+    });
   }
+
+  formatTimeRange(timeRange: [number, number]): string {
+    return `${this.formatHour(timeRange[0])} - ${this.formatHour(timeRange[1])}`;
+  }
+
 
   getTabClass(tab: string): string {
     const baseClasses = 'border-b-2 transition-colors duration-200';
     return tab === this.activeTab
       ? `${baseClasses} border-purple-500 text-purple-600`
       : `${baseClasses} border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300`;
-  } 
-
-  getTotalExams(): number {
-    return Object.keys(this.timetableData).length;
-  }
-
-  getExamDetails(day: string, time: string): string[] | null {
-    return this.timetableData[day]?.[time] || null;
   }
 
   getSeverityClass(severity: string): string {
@@ -150,4 +186,69 @@ export class DisplayResultComponent implements OnInit {
     // Implement your download logic here
     console.log('Downloading timetable...');
   }
+
+  // Add these methods to your DisplayResultComponent class
+
+getTotalScheduledExams(): number {
+  let total = 0;
+  Object.values(this.timetableData).forEach(daySchedule => {
+    Object.values(daySchedule).forEach(slot => {
+      total += slot.courses?.length || 0;
+    });
+  });
+  return total;
+}
+
+getTotalConflicts(): number {
+  return this.conflicts.length;
+}
+
+getExamDetails(day: string, timeSlot: string): string[] {
+  return this.timetableData[day]?.[timeSlot]?.courses || [];
+}
+
+getFacultyAssignmentsForTimeSlot(day: string, timeSlot: string, hourSlot: string): FacultyAssignment[] {
+  const assignments = this.timetableData[day]?.[timeSlot]?.facultyAssignments?.[hourSlot];
+  return assignments || [];
+}
+
+getFacultyAssignmentsForSlot(day: string, timeSlot: string): FacultyAssignment[] {
+  const allAssignments: FacultyAssignment[] = [];
+  const assignments = this.timetableData[day]?.[timeSlot]?.facultyAssignments;
+  
+  if (assignments) {
+    Object.values(assignments).forEach(slotAssignments => {
+      allAssignments.push(...slotAssignments);
+    });
+  }
+  
+  return allAssignments;
+}
+
+formatTimeSlot(slot: string): string {
+  const [start, end] = slot.split('-');
+  return `${this.formatHour(parseInt(start))} - ${this.formatHour(parseInt(end))}`;
+}
+
+private formatHour(hour: number): string {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : hour;
+  return `${displayHour}:00 ${period}`;
+}
+
+getSlotTimes(isAfternoon: boolean): string[] {
+  return isAfternoon 
+    ? ['13:00-14:00', '14:00-15:00', '15:00-16:00']
+    : ['9:00-10:00', '10:00-11:00', '11:00-12:00'];
+}
+
+hasFacultyAssignments(day: string, timeSlot: string): boolean {
+  return Object.keys(this.timetableData[day]?.[timeSlot]?.facultyAssignments || {}).length > 0;
+}
+
+getSessionLabel(isAfternoon: boolean): string {
+  return isAfternoon 
+    ? 'Afternoon Session (1:00 PM - 4:00 PM)'
+    : 'Morning Session (9:00 AM - 12:00 PM)';
+}
 }

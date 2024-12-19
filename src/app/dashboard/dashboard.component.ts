@@ -10,8 +10,15 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { FileProcessingFacultyService } from '../services/file-processing-faculty.service';
 import { SchedulerService } from '../services/scheduler.service';
 import { ResultService } from '../services/result.service';
+import { FacultySchedulerService } from '../services/faculty-scheduler.service';
 
 export type ImportType = 'students' | 'courses' | 'faculty';
+
+interface ConflictDetail {
+  student: string;
+  slot: number;
+  conflictingCourses: string[];
+}
 
 interface StudentData {
   infoMap: [string, string[]][];  // Array of [studentId, info] tuples
@@ -25,6 +32,33 @@ interface ProcessedData {
   processed: boolean;
   timestamp: number;
   data: any;
+}
+
+export interface ExamSchedule {
+  timetable: {
+    [timeSlot: string]: string[];
+  };
+  conflicts: number;
+  conflictDetails: ConflictDetail[];
+}
+
+export interface FacultyAssignment {
+  faculty: string;
+  timeRange: [number, number];
+}
+
+export interface FacultySchedule {
+  [timeSlot: string]: {
+    courses: string[];
+    facultyAssignments: {
+      [timeSlot: string]: FacultyAssignment[];
+    };
+  };
+}
+
+export interface CompleteSchedule {
+  examSchedule: ExamSchedule;
+  facultySchedule: FacultySchedule;
 }
 
 @Component({
@@ -52,6 +86,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private fileProcessingCoursesService: FileProcessingCoursesService,
     private fileProcessingFacultyService: FileProcessingFacultyService, 
     private schedulerService: SchedulerService,
+    private facultySchedulerService: FacultySchedulerService,
     private resultService: ResultService,
     private snackBar: MatSnackBar
   ) {
@@ -120,11 +155,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           case 'faculty':
             await this.fileProcessingFacultyService.processFacultyFile(this.uploadedFiles[type]!);
             const facultyData = this.fileProcessingFacultyService.getAllFacultyData();
-            this.fileStateService.updateProcessedData(type, this.uploadedFiles[type]!.name, facultyData);
+            this.fileStateService.updateProcessedData(type, this.uploadedFiles[type]!.name, facultyData.facultyAvailability);
             
             const summaryFaculty = this.fileProcessingFacultyService.getDataSummary();
             this.snackBar.open(
-              `Successfully processed ${summaryFaculty.totalFaculty} faculty members with ${summaryFaculty.facultyWithAvailability} having availability`,
+              `Successfully processed ${summaryFaculty.totalFaculty}`,
               'Close',
               { duration: 5000, panelClass: ['success-snackbar'] }
             );
@@ -299,41 +334,60 @@ export class DashboardComponent implements OnInit, OnDestroy {
       // Get processed data using the correct methods
       const studentsProcessedData = this.fileStateService.getProcessedData('students');
       const coursesProcessedData = this.fileStateService.getProcessedData('courses');
-
-      if (!studentsProcessedData || !coursesProcessedData) {
+      const facultyProcessedData = this.fileStateService.getProcessedData('faculty');
+    
+      if (!studentsProcessedData || !coursesProcessedData || !facultyProcessedData) {
         throw new Error('Required data not found');
       }
-
+    
       // Type assertion for student data
-      const studentData = studentsProcessedData.data as StudentData;
+      const studentData = studentsProcessedData.data as StudentData; 
       
       // Create student courses mapping
       const studentCourses: { [student: string]: string[] } = {};
       studentData.infoMap.forEach(([studentId, _]: [string, string[]]) => {
         studentCourses[studentId] = studentData.courses[studentId] || [];
       });
-
+    
       // Get course list from processed course data
       const courseList = coursesProcessedData.data as string[];
-
+    
       // Calculate slots based on selected dates
       const slotsPerDay = 2; // Assuming 2 slots per day
       const days = this.selectedDates.length;
-
-      // Generate schedule
-      const scheduleResult = this.schedulerService.scheduleExams(
+    
+      // Generate exam schedule
+      const examSchedule = this.schedulerService.scheduleExams(
         studentCourses,
         courseList,
         days,
         slotsPerDay
       );
-
-      this.resultService.setScheduleResult(scheduleResult);
+    
+      // Generate faculty schedule
+      const facultySchedule = this.facultySchedulerService.scheduleFaculties(
+        examSchedule.timetable,
+        facultyProcessedData.data,
+        this.selectedDates
+      );
+    
+      // Combine both schedules into complete schedule
+      const completeSchedule = {
+        examSchedule: {
+          timetable: examSchedule.timetable,
+          conflicts: examSchedule.conflicts,
+          conflictDetails: examSchedule.conflictDetails
+        },
+        facultySchedule: facultySchedule
+      };
+    
+      // Store the complete result
+      this.resultService.setScheduleResult(completeSchedule);
       
       // Set selected dates and navigate
       this.shareDates.setSelectedDates(this.selectedDates);
       this.router.navigate(['/display-result']);
-
+    
     } catch (error) {
       console.error('Error generating schedule:', error);
       this.snackBar.open(

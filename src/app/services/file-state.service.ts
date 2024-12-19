@@ -18,8 +18,6 @@ interface ConflictDetail {
   conflictingCourses: string[];
 }
 
-
-
 interface ScheduleResult {
   timetable: Timetable;
   conflicts: number;
@@ -97,7 +95,9 @@ export class FileStateService {
         }
         break;
       case 'faculty':
-        // Add faculty data validation when implemented
+        if (!this.isValidFacultyData(data)) {
+          throw new Error('Invalid faculty data format');
+        }
         break;
     }
 
@@ -155,6 +155,66 @@ export class FileStateService {
   private isValidCourseData(data: any): data is string[] {
     if (!Array.isArray(data)) return false;
     return data.every(item => typeof item === 'string');
+  } 
+
+  isValidFacultyData(data: any): boolean {
+    // Check if data exists and is an object
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      console.error('Invalid data structure: Expected an object');
+      return false;
+    }
+  
+    // Validate each faculty entry
+    return Object.entries(data).every(([facultyName, availability]) => {
+      // Check if facultyName is a string and not empty
+      if (typeof facultyName !== 'string' || !facultyName.trim()) {
+        console.error('Invalid faculty name:', facultyName);
+        return false;
+      }
+  
+      // Check if availability is an array
+      if (!Array.isArray(availability)) {
+        console.error('Invalid availability format for faculty:', facultyName);
+        return false;
+      }
+  
+      // Validate each time slot array
+      return availability.every((timeSlots, index) => {
+        // Check if timeSlots is an array
+        if (!Array.isArray(timeSlots)) {
+          console.error(`Invalid time slot format at index ${index} for faculty:`, facultyName);
+          return false;
+        }
+  
+        // Check if each time slot array has exactly 2 elements
+        if (timeSlots.length !== 2) {
+          console.error(`Invalid time slot length at index ${index} for faculty:`, facultyName);
+          return false;
+        }
+  
+        const [start, end] = timeSlots;
+  
+        // Check if times are valid numbers
+        if (typeof start !== 'number' || typeof end !== 'number') {
+          console.error(`Invalid time format at index ${index} for faculty:`, facultyName);
+          return false;
+        }
+  
+        // Check if times are within valid range (9:00 - 17:00)
+        if (start < 9 || start > 17 || end < 9 || end > 17) {
+          console.error(`Time out of range at index ${index} for faculty:`, facultyName);
+          return false;
+        }
+  
+        // Check if end time is after start time
+        if (end <= start) {
+          console.error(`Invalid time range at index ${index} for faculty:`, facultyName);
+          return false;
+        }
+  
+        return true;
+      });
+    });
   }
 
   // Storage methods
@@ -210,8 +270,7 @@ export class FileStateService {
         case 'courses':
           return this.isValidCourseData(fileState.data);
         case 'faculty':
-          // Add faculty validation when implemented
-          return true;
+          return this.isValidFacultyData(fileState.data);
         default:
           return false;
       }
@@ -266,4 +325,6 @@ export class FileStateService {
   getScheduleResult(): ScheduleResult | null {
     return this.scheduleResult;
   }
+
+  
 }

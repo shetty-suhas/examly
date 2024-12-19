@@ -22,32 +22,94 @@ export interface ScheduleResult {
   conflictDetails: ConflictDetail[];
 }
 
+export interface ScheduleResult {
+  timetable: {
+    [timeSlot: string]: string[];
+  };
+  conflicts: number;
+  conflictDetails: ConflictDetail[];
+  facultyAssignments?: {
+    [timeSlot: string]: {
+      courses: string[];
+      facultyAssignments: {
+        [timeSlot: string]: Array<{
+          faculty: string;
+          timeRange: [number, number];
+        }>;
+      };
+    };
+  };
+}
+
+export interface ExamSchedule {
+  timetable: {
+    [timeSlot: string]: string[];
+  };
+  conflicts: number;
+  conflictDetails: ConflictDetail[];
+}
+
+export interface FacultyAssignment {
+  faculty: string;
+  timeRange: [number, number];
+}
+
+export interface FacultySchedule {
+  [timeSlot: string]: {
+    courses: string[];
+    facultyAssignments: {
+      [timeSlot: string]: FacultyAssignment[];
+    };
+  };
+}
+
+export interface CompleteSchedule {
+  examSchedule: ExamSchedule;
+  facultySchedule: FacultySchedule;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ResultService {
-  private scheduleResultSubject = new BehaviorSubject<ScheduleResult | null>(null);
+  private examScheduleSubject = new BehaviorSubject<ExamSchedule | null>(null);
+  private facultyScheduleSubject = new BehaviorSubject<FacultySchedule | null>(null);
   private loadingSubject = new BehaviorSubject<boolean>(false);
 
-  // Public observables
-  scheduleResult$ = this.scheduleResultSubject.asObservable();
+  examSchedule$ = this.examScheduleSubject.asObservable();
+  facultySchedule$ = this.facultyScheduleSubject.asObservable();
   isLoading$ = this.loadingSubject.asObservable();
 
-  constructor() {}
-
-  setScheduleResult(result: ScheduleResult) {
-    // Format the timetable data before storing
-    const formattedResult: ScheduleResult = {
-      ...result,
-      timetable: this.formatTimetable(result.timetable)
+  setScheduleResult(result: CompleteSchedule) {
+    const formattedExamSchedule = {
+      ...result.examSchedule,
+      timetable: this.formatTimetable(result.examSchedule.timetable)
     };
     
-    this.scheduleResultSubject.next(formattedResult);
+    this.examScheduleSubject.next(formattedExamSchedule);
+    this.facultyScheduleSubject.next(result.facultySchedule); 
+    console.log(result.facultySchedule)
     this.setLoading(false);
   }
 
-  getScheduleResult(): ScheduleResult | null {
-    return this.scheduleResultSubject.getValue();
+  getExamSchedule(): ExamSchedule | null {
+    return this.examScheduleSubject.getValue();
+  }
+
+  getFacultySchedule(): FacultySchedule | null {
+    return this.facultyScheduleSubject.getValue();
+  }
+
+  getCompleteSchedule(): CompleteSchedule | null {
+    const examSchedule = this.getExamSchedule();
+    const facultySchedule = this.getFacultySchedule();
+
+    if (!examSchedule || !facultySchedule) return null;
+
+    return {
+      examSchedule,
+      facultySchedule
+    };
   }
 
   setLoading(loading: boolean) {
@@ -55,7 +117,8 @@ export class ResultService {
   }
 
   clearResult() {
-    this.scheduleResultSubject.next(null);
+    this.examScheduleSubject.next(null);
+    this.facultyScheduleSubject.next(null);
     this.setLoading(false);
   }
 
@@ -63,7 +126,6 @@ export class ResultService {
     const formattedTimetable: { [key: string]: string[] } = {};
     
     Object.entries(timetable).forEach(([timeSlot, courses]) => {
-      // Extract day and slot information
       const match = timeSlot.match(/Day (\d+), Slot (\d+)/);
       if (match) {
         const [_, day, slot] = match;
@@ -78,53 +140,55 @@ export class ResultService {
     return formattedTimetable;
   }
 
-  // Helper method to get formatted time string
   private formatTime(hour: number): string {
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour > 12 ? hour - 12 : hour;
     return `${displayHour}:00 ${period}`;
   }
 
-  // Method to check if a result exists
   hasResult(): boolean {
-    return this.scheduleResultSubject.getValue() !== null;
+    return this.examScheduleSubject.getValue() !== null && 
+           this.facultyScheduleSubject.getValue() !== null;
   }
 
-  // Method to get loading state
   isLoading(): boolean {
     return this.loadingSubject.getValue();
   }
 
-  // Method to get total number of scheduled exams
   getTotalScheduledExams(): number {
-    const result = this.getScheduleResult();
-    if (!result) return 0;
+    const examSchedule = this.getExamSchedule();
+    if (!examSchedule) return 0;
 
-    return Object.values(result.timetable)
+    return Object.values(examSchedule.timetable)
       .reduce((total, courses) => total + courses.length, 0);
   }
 
-  // Method to get total number of conflicts
   getTotalConflicts(): number {
-    const result = this.getScheduleResult();
-    return result?.conflicts || 0;
+    const examSchedule = this.getExamSchedule();
+    return examSchedule?.conflicts || 0;
   }
 
-  // Method to get courses for a specific day and slot
   getCoursesForSlot(day: number, slot: number): string[] {
-    const result = this.getScheduleResult();
-    if (!result) return [];
+    const examSchedule = this.getExamSchedule();
+    if (!examSchedule) return [];
 
     const key = `Day ${day}, Slot ${slot}`;
-    return result.timetable[key] || [];
+    return examSchedule.timetable[key] || [];
   }
 
-  // Method to check if a specific timeslot has conflicts
-  hasConflictsInSlot(day: number, slot: number): boolean {
-    const result = this.getScheduleResult();
-    if (!result) return false;
+  getFacultyForSlot(day: number, slot: number): FacultyAssignment[] {
+    const facultySchedule = this.getFacultySchedule();
+    if (!facultySchedule) return [];
 
-    return result.conflictDetails.some(
+    const key = `Day ${day}, Slot ${slot}`;
+    return facultySchedule[key]?.facultyAssignments[key] || [];
+  }
+
+  hasConflictsInSlot(day: number, slot: number): boolean {
+    const examSchedule = this.getExamSchedule();
+    if (!examSchedule) return false;
+
+    return examSchedule.conflictDetails.some(
       conflict => Math.floor(conflict.slot / 2) === day && conflict.slot % 2 === slot
     );
   }
