@@ -1,4 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
+import { ResultService } from '../services/result.service';
 import { ShareDatesService } from '../services/share-dates.service';
 
 interface Conflict {
@@ -18,34 +19,36 @@ interface Conflict {
 })
 export class DisplayResultComponent implements OnInit {
   selectedDates: Date[] = [];
+  scheduleResult$ = this.resultService.scheduleResult$;
+  isCalculating$ = this.resultService.isLoading$;
   
   activeTab: 'timetable' | 'conflicts' = 'timetable';
   days: string[] = [];
-  timeSlots: string[] = [];
-  examSlots: any[] = [];
   conflicts: Conflict[] = [];
-  timetableData: { [key: string]: { [key: string]: string } } = {};
+  timetableData: { [key: string]: { [key: string]: string[] } } = {};
 
-  constructor(private shareDates: ShareDatesService) {
+  constructor(
+    private shareDates: ShareDatesService, 
+    private resultService: ResultService
+  ) {
     this.shareDates.selectedDates$.subscribe(dates => {
       this.selectedDates = dates;
+      this.updateDays();
     });
-
-    for (let hour = 9; hour <= 17; hour++) {
-      this.timeSlots.push(this.formatHour(hour));
-    }
-  } 
-
-  ngOnInit() {
-    this.updateDays();
   }
 
-  ngOnChanges() {
+  ngOnInit() {
+    this.selectedDates = this.shareDates.getSelectedDates();
     this.updateDays();
+    
+    this.scheduleResult$.subscribe(result => {
+      if (result) {
+        this.updateTimetableData(result);
+      }
+    });
   }
 
   private updateDays() {
-    // Format the selected dates for display
     this.days = this.selectedDates.map(date => 
       date.toLocaleDateString('en-US', {
         weekday: 'long',
@@ -54,6 +57,47 @@ export class DisplayResultComponent implements OnInit {
         day: 'numeric'
       })
     );
+  }
+
+  updateTimetableData(scheduleResult: any) {
+    this.timetableData = {};
+    this.conflicts = [];
+
+    // Initialize timetable structure for all days
+    this.days.forEach((day, index) => {
+      this.timetableData[day] = {
+        'Morning (9:00 AM - 12:00 PM)': [],
+        'Afternoon (1:00 PM - 4:00 PM)': []
+      };
+    });
+
+    // Process schedule results
+    if (scheduleResult?.timetable) {
+      Object.entries(scheduleResult.timetable).forEach(([timeSlot, courses]: [string, any]) => {
+        const [dayPart, slotPart] = timeSlot.split(', ');
+        const dayIndex = parseInt(dayPart.replace('Day ', '')) - 1;
+        const day = this.days[dayIndex];
+        
+        if (day) {
+          const timeKey = slotPart.includes('9:00-12:00') 
+            ? 'Morning (9:00 AM - 12:00 PM)'
+            : 'Afternoon (1:00 PM - 4:00 PM)';
+          
+          this.timetableData[day][timeKey] = courses;
+        }
+      });
+    }
+
+    // Process conflicts
+    if (scheduleResult?.conflictDetails) {
+      this.conflicts = scheduleResult.conflictDetails.map((conflict: any) => ({
+        ...conflict,
+        severity: 'high',
+        type: 'time',
+        description: `Scheduling conflict for ${conflict.student}`,
+        details: `Courses: ${conflict.conflictingCourses.join(', ')}`
+      }));
+    }
   }
 
   private formatHour(hour: number): string {
@@ -73,7 +117,7 @@ export class DisplayResultComponent implements OnInit {
     return Object.keys(this.timetableData).length;
   }
 
-  getExamDetails(day: string, time: string): string | null {
+  getExamDetails(day: string, time: string): string[] | null {
     return this.timetableData[day]?.[time] || null;
   }
 
@@ -105,32 +149,5 @@ export class DisplayResultComponent implements OnInit {
   downloadTimetable() {
     // Implement your download logic here
     console.log('Downloading timetable...');
-  }
-
-  updateTimetableData(scheduleResult: any) {
-    this.timetableData = {};
-    this.conflicts = [];
-
-    // Process schedule results
-    if (scheduleResult?.timetable) {
-      Object.entries(scheduleResult.timetable).forEach(([timeSlot, courses]: [string, any]) => {
-        const [date, time] = timeSlot.split(', ');
-        if (!this.timetableData[date]) {
-          this.timetableData[date] = {};
-        }
-        this.timetableData[date][time] = courses.join('\n');
-      });
-    }
-
-    // Process conflicts
-    if (scheduleResult?.conflictDetails) {
-      this.conflicts = scheduleResult.conflictDetails.map((conflict: any) => ({
-        ...conflict,
-        severity: 'high',
-        type: 'time',
-        description: `Scheduling conflict for ${conflict.student}`,
-        details: `Courses: ${conflict.conflictingCourses.join(', ')}`
-      }));
-    }
   }
 }

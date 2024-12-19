@@ -30,21 +30,33 @@
         Import Data Files
       </h2>
 
-      <!-- Upload Progress Overview -->
+      <!-- File Status Overview -->
       <div class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
         <div *ngFor="let type of importTypes" 
              class="p-4 rounded-lg border border-purple-100 bg-white/50">
           <div class="flex justify-between items-start">
             <div class="text-sm font-medium text-gray-600">{{ type | titlecase }}</div>
-            <div *ngIf="uploadedFiles[type]" 
-                 class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
+            <div class="flex items-center gap-2">
+              <!-- Uploaded indicator -->
+              <div *ngIf="uploadedFiles[type]" 
+                   class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
+                   [title]="'File selected: ' + uploadedFiles[type]?.name">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </div>
+              <!-- Processed indicator -->
+              <div *ngIf="processedFiles[type]" 
+                   class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center"
+                   [title]="'Processed: ' + processedFiles[type]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
           </div>
           <div class="text-xs text-purple-600 truncate mt-1">
-            {{ uploadedFiles[type]?.name || 'No file uploaded' }}
+            {{ processedFiles[type] || uploadedFiles[type]?.name || 'No file uploaded' }}
           </div>
         </div>
       </div>
@@ -56,8 +68,10 @@
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-800">
               {{ type | titlecase }} Data
-              <span *ngIf="uploadedFiles[type]" class="ml-2 text-sm text-green-600">
-                (File Selected)
+              <span *ngIf="uploadedFiles[type]" class="ml-2 text-sm" 
+                    [class.text-blue-600]="!processedFiles[type]"
+                    [class.text-green-600]="processedFiles[type]">
+                ({{ processedFiles[type] ? 'Processed' : 'File Selected' }})
               </span>
             </h3>
             <button *ngIf="uploadedFiles[type]"
@@ -80,10 +94,10 @@
             <div class="space-y-2">
               <div *ngIf="!uploadedFiles[type]">
                 <svg xmlns="http://www.w3.org/2000/svg" 
-                  class="h-10 w-10 mx-auto text-gray-400" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor">
+                     class="h-10 w-10 mx-auto text-gray-400" 
+                     fill="none" 
+                     viewBox="0 0 24 24" 
+                     stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <p class="text-sm text-gray-600 mt-2">
@@ -109,7 +123,10 @@
 
               <div *ngIf="uploadedFiles[type]" class="space-y-2">
                 <div class="flex items-center justify-center gap-2 text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" 
+                       [class.text-blue-500]="!processedFiles[type]"
+                       [class.text-green-500]="processedFiles[type]"
+                       class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>{{ uploadedFiles[type]?.name }}</span>
@@ -122,7 +139,7 @@
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  Upload
+                  {{ processedFiles[type] ? 'Update' : 'Upload' }}
                 </button>
               </div>
             </div>
@@ -143,13 +160,13 @@
           <!-- Calendar -->
           <div class="bg-white rounded-lg shadow p-4">
             <mat-calendar 
-            [(selected)]="selected"
-            [dateFilter]="dateFilter"
-            [minDate]="minDate"
-            [maxDate]="maxDate"
-            [dateClass]="dateClass"
-            (selectedChange)="onDateSelection($event)">
-          </mat-calendar>
+              [(selected)]="selected"
+              [dateFilter]="dateFilter"
+              [minDate]="minDate"
+              [maxDate]="maxDate"
+              [dateClass]="dateClass"
+              (selectedChange)="onDateSelection($event)">
+            </mat-calendar>
           </div>
 
           <!-- Selected Dates -->

@@ -8,26 +8,13 @@ interface ConflictGraph {
   [course: string]: Set<string>;
 }
 
-interface CourseSlots {
-  [course: string]: number;
-}
-
-interface Timetable {
-  [timeSlot: string]: string[];
-}
-
-interface TimeSlot {
-  day: number;
-  slot: number;
-  startTime: number;
-  endTime: number;
-}
-
 interface ConflictDetail {
   student: string;
   slot: number;
   conflictingCourses: string[];
 }
+
+
 
 interface ScheduleResult {
   timetable: Timetable;
@@ -35,31 +22,64 @@ interface ScheduleResult {
   conflictDetails: ConflictDetail[];
 }
 
+interface FacultyData {
+  // Define faculty data structure when implemented
+}
+
+interface TimeSlot {
+  day: number;
+  slot: number;
+  startTime: number;
+  endTime: number;
+  }
+
+  interface CourseSlots {
+    [course: string]: number;
+  }
+
+interface Timetable {
+  [timeSlot: string]: string[];
+}
+
+// ... other interfaces remain the same ...
+
 @Injectable({
   providedIn: 'root'
 })
 export class SchedulerService {
-  scheduleExams(studentCourses: StudentCourses, days: number, slotsPerDay: number): ScheduleResult {
-    // Step 1: Build the conflict graph
+  scheduleExams(
+    studentCourses: StudentCourses, 
+    courseList: string[], // New parameter
+    days: number, 
+    slotsPerDay: number
+  ): ScheduleResult {
+    // Step 1: Build the conflict graph only for provided courses
     const graph: ConflictGraph = {};
     
+    // Initialize graph with provided courses
+    courseList.forEach(course => {
+      graph[course] = new Set<string>();
+    });
+    
+    // Build conflicts only for courses in courseList
     for (const [student, courses] of Object.entries(studentCourses)) {
-      for (let i = 0; i < courses.length; i++) {
-        if (!graph[courses[i]]) {
-          graph[courses[i]] = new Set<string>();
-        }
-        for (let j = i + 1; j < courses.length; j++) {
-          graph[courses[i]].add(courses[j]);
-          if (!graph[courses[j]]) {
-            graph[courses[j]] = new Set<string>();
+      const studentCoursesInList = courses.filter(course => courseList.includes(course));
+      
+      for (let i = 0; i < studentCoursesInList.length; i++) {
+        for (let j = i + 1; j < studentCoursesInList.length; j++) {
+          const course1 = studentCoursesInList[i];
+          const course2 = studentCoursesInList[j];
+          
+          // Only add conflicts for courses in our list
+          if (graph[course1] && graph[course2]) {
+            graph[course1].add(course2);
+            graph[course2].add(course1);
           }
-          graph[courses[j]].add(courses[i]);
         }
       }
     }
 
     // Step 2: Generate time slots
-    const courses = Object.keys(graph);
     const timeSlots: TimeSlot[] = [];
     const slotDuration = 3; // 3 hours per exam
     const breakDuration = 0.5; // 30 minutes break
@@ -84,19 +104,21 @@ export class SchedulerService {
 
     const totalSlots = timeSlots.length;
     
-    // Step 3: Graph Coloring
+    // Step 3: Graph Coloring (using provided courseList)
     const courseSlots: CourseSlots = {};
     const availableColors = Array.from({ length: totalSlots }, (_, i) => i);
     const overflowCourses: string[] = [];
 
-    for (const course of courses) {
+    for (const course of courseList) {
       // Find colors of neighbors (conflicting courses)
       const neighborColors = new Set<number>();
-      graph[course].forEach(neighbor => {
-        if (neighbor in courseSlots) {
-          neighborColors.add(courseSlots[neighbor]);
-        }
-      });
+      if (graph[course]) {
+        graph[course].forEach(neighbor => {
+          if (neighbor in courseSlots) {
+            neighborColors.add(courseSlots[neighbor]);
+          }
+        });
+      }
 
       // Assign the lowest available color or mark as overflow
       let colorAssigned = false;
@@ -117,14 +139,15 @@ export class SchedulerService {
       courseSlots[course] = availableColors[0];
     }
 
-    // Step 4: Calculate conflicts
+    // Step 4: Calculate conflicts (only for provided courses)
     let conflicts = 0;
     const conflictDetails: ConflictDetail[] = [];
     
     for (const [student, courses] of Object.entries(studentCourses)) {
+      const coursesInList = courses.filter(course => courseList.includes(course));
       const slotCount: { [slot: number]: string[] } = {};
       
-      for (const course of courses) {
+      for (const course of coursesInList) {
         if (course in courseSlots) {
           const slot = courseSlots[course];
           if (!slotCount[slot]) {
@@ -134,7 +157,7 @@ export class SchedulerService {
         }
       }
 
-      // Count slots with more than one exam and log conflicts
+      // Count slots with more than one exam
       for (const [slot, assignedCourses] of Object.entries(slotCount)) {
         if (assignedCourses.length > 1) {
           conflicts += assignedCourses.length - 1;
@@ -147,7 +170,7 @@ export class SchedulerService {
       }
     }
 
-    // Step 5: Convert slots to timetable
+    // Step 5: Convert slots to timetable (only for provided courses)
     const timetable: Timetable = {};
     
     for (const [course, slot] of Object.entries(courseSlots)) {
@@ -163,7 +186,6 @@ export class SchedulerService {
     return { timetable, conflicts, conflictDetails };
   }
 
-  // Helper method to format time (optional)
   private formatTime(time: number): string {
     const hours = Math.floor(time);
     const minutes = (time % 1) * 60;

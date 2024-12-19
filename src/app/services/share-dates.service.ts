@@ -11,4 +11,12 @@ export class ShareDatesService {
   setSelectedDates(dates: Date[]) {
     this.selectedDatesSource.next(dates);
   }
+
+  getSelectedDates(): Date[] {
+    return this.selectedDatesSource.getValue();
+  }
+
+  clearDates() {
+    this.selectedDatesSource.next([]);
+  }
 }
