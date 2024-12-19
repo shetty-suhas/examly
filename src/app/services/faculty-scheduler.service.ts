@@ -17,7 +17,7 @@ interface FacultyAssignment {
 }
 
 interface ExamFacultySchedule {
-  [key: string]: {  // key format: "Day X, Slot Y"
+  [key: string]: {
     courses: string[];
     facultyAssignments: {
       [timeSlot: string]: FacultyAssignment[];
@@ -29,6 +29,7 @@ interface ExamFacultySchedule {
   providedIn: 'root'
 })
 export class FacultySchedulerService {
+  private dailyFacultyAssignments: Map<string, Map<string, Set<string>>> = new Map();
   
   scheduleFaculties(
     examSchedule: { [key: string]: string[] },
@@ -36,24 +37,24 @@ export class FacultySchedulerService {
     selectedDates: Date[]
   ): ExamFacultySchedule {  
     const facultySchedule: ExamFacultySchedule = {};
-    const assignedFaculties = new Map<string, Set<string>>(); // Track faculty assignments per day
+    const assignedFaculties = new Map<string, Set<string>>();
+    this.dailyFacultyAssignments.clear();
 
     // Initialize tracking for each day
     selectedDates.forEach((_, index) => {
-      assignedFaculties.set(`Day ${index + 1}`, new Set<string>());
+      const dayStr = `Day ${index + 1}`;
+      assignedFaculties.set(dayStr, new Set<string>());
+      this.dailyFacultyAssignments.set(dayStr, new Map());
     });
 
     // Process each exam slot
     for (const [slotKey, courses] of Object.entries(examSchedule)) {
       const [dayStr, slotStr] = slotKey.split(', ');
-      const dayNumber = parseInt(dayStr.replace('Day ', ''));
       const isMorningSlot = slotStr.includes('Slot 1');
       
-      // Determine slot timing
       const startTime = isMorningSlot ? 9 : 13;
       const endTime = isMorningSlot ? 12 : 16;
 
-      // Get assigned faculties for this day
       const dayAssignments = assignedFaculties.get(dayStr) || new Set<string>();
 
       facultySchedule[slotKey] = {
@@ -80,41 +81,49 @@ export class FacultySchedulerService {
   ): { [timeSlot: string]: FacultyAssignment[] } {
     const assignments: { [timeSlot: string]: FacultyAssignment[] } = {};
     const timeSlots = this.generateTimeSlots(startTime, endTime);
-    const assignedFacultiesThisSlot = new Set<string>();
+    
+    // Get or create the daily time slot assignments map
+    const dayTimeSlots = this.dailyFacultyAssignments.get(dayStr) || new Map<string, Set<string>>();
 
-    // Process each hour-long slot
     for (const slot of timeSlots) {
       const [slotStart, slotEnd] = slot;
       const timeKey = `${slotStart}:00-${slotEnd}:00`;
       
-      // Find available faculties for this time slot
+      // Initialize time slot tracking if needed
+      if (!dayTimeSlots.has(timeKey)) {
+        dayTimeSlots.set(timeKey, new Set<string>());
+      }
+
       const availableFaculties = Object.entries(facultyAvailability)
         .filter(([faculty, availability]) => {
-          // Check if faculty is available and not over-assigned
-          return !assignedFacultiesThisSlot.has(faculty) &&
-                 this.isFacultyAvailableForSlot(availability, slotStart, slotEnd) &&
-                 !this.hasReachedDailyLimit(faculty, assignedFacultiesForDay);
+          const isAvailableForTimeSlot = this.isFacultyAvailableForSlot(availability, slotStart, slotEnd);
+          const hasNotReachedDailyLimit = !this.hasReachedDailyLimit(faculty, assignedFacultiesForDay);
+          const notAssignedInThisTimeSlot = !dayTimeSlots.get(timeKey)?.has(faculty);
+          
+          return isAvailableForTimeSlot && hasNotReachedDailyLimit && notAssignedInThisTimeSlot;
         })
         .map(([faculty]) => faculty);
 
-      // Assign faculties to this slot
-      const slotAssignments: FacultyAssignment[] = [];
-      for (const faculty of availableFaculties) {
-        slotAssignments.push({
-          faculty,
+      // Assign only one faculty to this slot
+      if (availableFaculties.length > 0) {
+        const selectedFaculty = availableFaculties[0];
+        
+        assignments[timeKey] = [{
+          faculty: selectedFaculty,
           timeRange: [slotStart, slotEnd]
-        });
-        
-        assignedFacultiesThisSlot.add(faculty);
-        assignedFacultiesForDay.add(faculty);
-        
-        // Break if we have assigned enough faculties for this slot
-        if (slotAssignments.length >= 2) break; // Assuming we need 2 faculties per slot
-      }
+        }];
 
-      assignments[timeKey] = slotAssignments;
+        // Update tracking
+        dayTimeSlots.get(timeKey)?.add(selectedFaculty);
+        assignedFacultiesForDay.add(selectedFaculty);
+      } else {
+        assignments[timeKey] = [];
+      }
     }
 
+    // Update the daily assignments tracking
+    this.dailyFacultyAssignments.set(dayStr, dayTimeSlots);
+    
     return assignments;
   }
 
@@ -141,12 +150,6 @@ export class FacultySchedulerService {
     assignedFacultiesForDay: Set<string>
   ): boolean {
     const MAX_HOURS_PER_DAY = 3;
-    let assignmentCount = 0;
-    
-    if (assignedFacultiesForDay.has(faculty)) {
-      assignmentCount++;
-    }
-
-    return assignmentCount >= MAX_HOURS_PER_DAY;
+    return assignedFacultiesForDay.has(faculty);
   }
 }

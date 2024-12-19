@@ -11,6 +11,7 @@ import { FileProcessingFacultyService } from '../services/file-processing-facult
 import { SchedulerService } from '../services/scheduler.service';
 import { ResultService } from '../services/result.service';
 import { FacultySchedulerService } from '../services/faculty-scheduler.service';
+import { FirebaseService } from '../services/firebase.service';
 
 export type ImportType = 'students' | 'courses' | 'faculty';
 
@@ -88,6 +89,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private schedulerService: SchedulerService,
     private facultySchedulerService: FacultySchedulerService,
     private resultService: ResultService,
+    private firebaseService: FirebaseService,
     private snackBar: MatSnackBar
   ) {
     this.stateSubscription = this.fileStateService.getStateChanges()
@@ -405,8 +407,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.importTypes.every(type => this.fileStateService.isFileProcessed(type));
   }
 
-  onLogout() {
-    this.fileStateService.clearAllData();
-    this.router.navigate(['/']);
+  async onLogout() {
+    try {
+      // Firebase sign out
+      await this.firebaseService.signOut();
+      
+      // Clear application data
+      this.fileStateService.clearAllData();
+      
+      // Clear any stored tokens or session data
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Navigate to home/login page
+      this.router.navigate(['/']);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   }
 }

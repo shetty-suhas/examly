@@ -1,6 +1,8 @@
 import { OnInit, Component } from "@angular/core";
 import { ResultService } from "../services/result.service";
 import { ShareDatesService } from "../services/share-dates.service";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface Conflict {
   student: string;
@@ -40,14 +42,14 @@ export class DisplayResultComponent implements OnInit {
   examSchedule$ = this.resultService.examSchedule$;
   facultySchedule$ = this.resultService.facultySchedule$;
   isCalculating$ = this.resultService.isLoading$;
-  
+
   activeTab: 'timetable' | 'conflicts' = 'timetable';
   days: string[] = [];
   conflicts: Conflict[] = [];
   timetableData: TimetableData = {};
 
   constructor(
-    private shareDates: ShareDatesService, 
+    private shareDates: ShareDatesService,
     private resultService: ResultService
   ) {
     this.shareDates.selectedDates$.subscribe(dates => {
@@ -59,7 +61,7 @@ export class DisplayResultComponent implements OnInit {
   ngOnInit() {
     this.selectedDates = this.shareDates.getSelectedDates();
     this.updateDays();
-    
+
     // Subscribe to both exam and faculty schedules
     this.examSchedule$.subscribe(examSchedule => {
       if (examSchedule) {
@@ -71,12 +73,12 @@ export class DisplayResultComponent implements OnInit {
       if (facultySchedule) {
         this.updateFacultySchedule(facultySchedule);
       }
-    }); 
+    });
     console.log(this.facultySchedule$)
   }
 
   private updateDays() {
-    this.days = this.selectedDates.map(date => 
+    this.days = this.selectedDates.map(date =>
       date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -101,12 +103,12 @@ export class DisplayResultComponent implements OnInit {
         const [dayPart, slotPart] = timeSlot.split(', ');
         const dayIndex = parseInt(dayPart.replace('Day ', '')) - 1;
         const day = this.days[dayIndex];
-        
+
         if (day) {
-          const timeKey = slotPart.includes('Slot 1') 
+          const timeKey = slotPart.includes('Slot 1')
             ? 'Morning (9:00 AM - 12:00 PM)'
             : 'Afternoon (1:00 PM - 4:00 PM)';
-          
+
           this.timetableData[day][timeKey].courses = courses;
         }
       });
@@ -125,22 +127,30 @@ export class DisplayResultComponent implements OnInit {
   }
 
   private updateFacultySchedule(facultySchedule: any) {
-    this.days.forEach((day, index) => {
-      const daySchedule = facultySchedule[day];
-      if (daySchedule) {
-        // Update morning assignments
-        if (daySchedule.facultyAssignments?.morning) {
-          this.timetableData[day]['Morning (9:00 AM - 12:00 PM)'].facultyAssignments = {
-            ...daySchedule.facultyAssignments.morning
-          };
-        }
+    console.log(facultySchedule)
+    this.days.forEach((fullDate, index) => {
+      const dayNumber = index + 1;
+      const morningKey = `Day ${dayNumber}, Slot 1 (9:00-12:00)`;
+      const afternoonKey = `Day ${dayNumber}, Slot 2 (12.5:00-15.5:00)`;
 
-        // Update afternoon assignments
-        if (daySchedule.facultyAssignments?.afternoon) {
-          this.timetableData[day]['Afternoon (1:00 PM - 4:00 PM)'].facultyAssignments = {
-            ...daySchedule.facultyAssignments.afternoon
-          };
-        }
+      // Get schedules using the new keys
+      const morningSchedule = facultySchedule[morningKey];
+      const afternoonSchedule = facultySchedule[afternoonKey];
+
+      // Update morning assignments
+      if (morningSchedule?.facultyAssignments) {
+        this.timetableData[fullDate]['Morning (9:00 AM - 12:00 PM)'] = {
+          ...this.timetableData[fullDate]['Morning (9:00 AM - 12:00 PM)'],
+          facultyAssignments: morningSchedule.facultyAssignments
+        };
+      }
+
+      // Update afternoon assignments
+      if (afternoonSchedule?.facultyAssignments) {
+        this.timetableData[fullDate]['Afternoon (1:00 PM - 4:00 PM)'] = {
+          ...this.timetableData[fullDate]['Afternoon (1:00 PM - 4:00 PM)'],
+          facultyAssignments: afternoonSchedule.facultyAssignments
+        };
       }
     });
   }
@@ -182,73 +192,130 @@ export class DisplayResultComponent implements OnInit {
     }
   }
 
-  downloadTimetable() {
-    // Implement your download logic here
-    console.log('Downloading timetable...');
+  async downloadTimetable() {
+    // Show loading indicator (optional)
+    console.log('Starting download...');
+
+    try {
+      // Get the element to be converted
+      const element = document.querySelector('.container') as HTMLElement;
+      if (!element) {
+        console.error('Container element not found');
+        return;
+      }
+
+      // Create canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: true, // Enable logging for debugging
+        backgroundColor: '#ffffff'
+      });
+
+      // Convert to PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Calculate dimensions
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 30;
+
+      // Add title
+      pdf.setFontSize(16);
+      pdf.setTextColor(88, 28, 135); // Purple color
+      pdf.text('Examination Schedule', pdfWidth / 2, 20, { align: 'center' });
+
+      // Add image to PDF
+      pdf.addImage(
+        imgData, 
+        'PNG', 
+        imgX, 
+        imgY, 
+        imgWidth * ratio, 
+        imgHeight * ratio
+      );
+
+      // Save PDF
+      const fileName = `exam_schedule_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      console.log('Download completed!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
   }
 
   // Add these methods to your DisplayResultComponent class
 
-getTotalScheduledExams(): number {
-  let total = 0;
-  Object.values(this.timetableData).forEach(daySchedule => {
-    Object.values(daySchedule).forEach(slot => {
-      total += slot.courses?.length || 0;
+  getTotalScheduledExams(): number {
+    let total = 0;
+    Object.values(this.timetableData).forEach(daySchedule => {
+      Object.values(daySchedule).forEach(slot => {
+        total += slot.courses?.length || 0;
+      });
     });
-  });
-  return total;
-}
-
-getTotalConflicts(): number {
-  return this.conflicts.length;
-}
-
-getExamDetails(day: string, timeSlot: string): string[] {
-  return this.timetableData[day]?.[timeSlot]?.courses || [];
-}
-
-getFacultyAssignmentsForTimeSlot(day: string, timeSlot: string, hourSlot: string): FacultyAssignment[] {
-  const assignments = this.timetableData[day]?.[timeSlot]?.facultyAssignments?.[hourSlot];
-  return assignments || [];
-}
-
-getFacultyAssignmentsForSlot(day: string, timeSlot: string): FacultyAssignment[] {
-  const allAssignments: FacultyAssignment[] = [];
-  const assignments = this.timetableData[day]?.[timeSlot]?.facultyAssignments;
-  
-  if (assignments) {
-    Object.values(assignments).forEach(slotAssignments => {
-      allAssignments.push(...slotAssignments);
-    });
+    return total;
   }
-  
-  return allAssignments;
-}
 
-formatTimeSlot(slot: string): string {
-  const [start, end] = slot.split('-');
-  return `${this.formatHour(parseInt(start))} - ${this.formatHour(parseInt(end))}`;
-}
+  getTotalConflicts(): number {
+    return this.conflicts.length;
+  }
 
-private formatHour(hour: number): string {
-  const period = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour > 12 ? hour - 12 : hour;
-  return `${displayHour}:00 ${period}`;
-}
+  getExamDetails(day: string, timeSlot: string): string[] {
+    return this.timetableData[day]?.[timeSlot]?.courses || [];
+  }
 
-getSlotTimes(isAfternoon: boolean): string[] {
-  return isAfternoon 
-    ? ['13:00-14:00', '14:00-15:00', '15:00-16:00']
-    : ['9:00-10:00', '10:00-11:00', '11:00-12:00'];
-}
+  getFacultyAssignmentsForTimeSlot(day: string, timeSlot: string, hourSlot: string): FacultyAssignment[] {
+    const assignments = this.timetableData[day]?.[timeSlot]?.facultyAssignments?.[hourSlot];
+    return assignments || [];
+  }
 
-hasFacultyAssignments(day: string, timeSlot: string): boolean {
-  return Object.keys(this.timetableData[day]?.[timeSlot]?.facultyAssignments || {}).length > 0;
-}
+  getFacultyAssignmentsForSlot(day: string, timeSlot: string): FacultyAssignment[] {
+    const allAssignments: FacultyAssignment[] = [];
+    const assignments = this.timetableData[day]?.[timeSlot]?.facultyAssignments;
 
-getSessionLabel(isAfternoon: boolean): string {
-  return isAfternoon 
-    ? 'Afternoon Session (1:00 PM - 4:00 PM)'
-    : 'Morning Session (9:00 AM - 12:00 PM)';
-}
+    if (assignments) {
+      Object.values(assignments).forEach(slotAssignments => {
+        allAssignments.push(...slotAssignments);
+      });
+    }
+
+    return allAssignments;
+  }
+
+  formatTimeSlot(slot: string): string {
+    const [start, end] = slot.split('-');
+    return `${this.formatHour(parseInt(start))} - ${this.formatHour(parseInt(end))}`;
+  }
+
+  private formatHour(hour: number): string {
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:00 ${period}`;
+  }
+
+  getSlotTimes(isAfternoon: boolean): string[] {
+    return isAfternoon
+      ? ['13:00-14:00', '14:00-15:00', '15:00-16:00']
+      : ['9:00-10:00', '10:00-11:00', '11:00-12:00'];
+  }
+
+  hasFacultyAssignments(day: string, timeSlot: string): boolean {
+    return Object.keys(this.timetableData[day]?.[timeSlot]?.facultyAssignments || {}).length > 0;
+  }
+
+  getSessionLabel(isAfternoon: boolean): string {
+    return isAfternoon
+      ? 'Afternoon Session (1:00 PM - 4:00 PM)'
+      : 'Morning Session (9:00 AM - 12:00 PM)';
+  }
 }
